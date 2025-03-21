@@ -25,14 +25,19 @@ jobs:
         pip install pyinstaller
         pip install PyQt6 requests
         pip install pillow  # Added Pillow for automatic conversion on macOS
+    
+    # Linux-specific dependencies
+    - name: Install Linux dependencies
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libglib2.0-0 libsm6 libxext6 libxrender1
+    
+    # Build step without conditional
     - name: Build with PyInstaller
       run: |
-        # Check the OS and install necessary dependencies for Linux
-        if [ "${{ runner.os }}" == "Linux" ]; then
-          sudo apt-get update
-          sudo apt-get install -y libglib2.0-0 libsm6 libxext6 libxrender1
-        fi
         pyinstaller --name JokeNotifier --windowed --onefile --icon=images/app.ico joke_notifier.py
+    
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
