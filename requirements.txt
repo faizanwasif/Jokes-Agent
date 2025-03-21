@@ -1,0 +1,12 @@
+# Required packages
+requests
+
+# Pick a notification package based on your OS:
+# For Windows:
+win10toast; platform_system == "Windows"
+
+# For Linux:
+notify2; platform_system == "Linux"
+
+# For macOS and cross-platform support (recommended):
+plyer
