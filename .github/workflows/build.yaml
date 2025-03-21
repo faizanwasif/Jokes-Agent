@@ -24,7 +24,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install pyinstaller
         pip install PyQt6 requests
-        # Add any other dependencies here
+        pip install pillow  # Added Pillow for automatic conversion on macOS
     - name: Build with PyInstaller
       run: |
         if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
