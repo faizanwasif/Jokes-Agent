@@ -27,7 +27,7 @@ jobs:
         pip install pillow  # Added Pillow for automatic conversion on macOS
     - name: Build with PyInstaller
       run: |
-        if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
+        if [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
           # Install required dependencies for Linux
           sudo apt-get update
           sudo apt-get install -y libglib2.0-0 libsm6 libxext6 libxrender1
