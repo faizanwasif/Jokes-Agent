@@ -38,11 +38,26 @@ jobs:
       run: |
         pyinstaller --name JokeNotifier --windowed --onefile --icon=images/app.ico joke_notifier.py
     
-    - name: Upload artifacts
+    # Windows artifact upload
+    - name: Upload Windows artifacts
+      if: runner.os == 'Windows'
       uses: actions/upload-artifact@v4
       with:
         name: JokeNotifier-${{ matrix.os }}
-        path: |
-          dist/*.exe
-          dist/*.app
-          dist/JokeNotifier  # For Linux builds (executable with no extension)
+        path: dist/*.exe
+
+    # macOS artifact upload
+    - name: Upload macOS artifacts
+      if: runner.os == 'macOS'
+      uses: actions/upload-artifact@v4
+      with:
+        name: JokeNotifier-${{ matrix.os }}
+        path: dist/*.app
+
+    # Linux artifact upload
+    - name: Upload Linux artifacts
+      if: runner.os == 'Linux'
+      uses: actions/upload-artifact@v4
+      with:
+        name: JokeNotifier-${{ matrix.os }}
+        path: dist/JokeNotifier
