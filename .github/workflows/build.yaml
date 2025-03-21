@@ -18,12 +18,18 @@ jobs:
           - os: windows-latest
             artifact_extension: exe
             artifact_path: dist/*.exe
+            platform_deps: win10toast-click
+            icon_path: images\app.ico
           - os: macos-latest
             artifact_extension: app
             artifact_path: dist/*.app
+            platform_deps: ""
+            icon_path: images/app.ico
           - os: ubuntu-latest
             artifact_extension: AppImage
             artifact_path: dist/*.AppImage
+            platform_deps: ""
+            icon_path: images/app.ico
 
     steps:
       - uses: actions/checkout@v3
@@ -34,93 +40,110 @@ jobs:
           python-version: '3.12.1'
           cache: 'pip'  # Enable pip caching for faster builds
       
-      - name: Install dependencies (common)
+      # Install base dependencies common to all platforms
+      - name: Install common dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pyinstaller requests win10toast-click
-
-      - name: Install Qt dependencies (Linux)
+          pip install pyinstaller requests PyQt6
+      
+      # Install platform-specific dependencies
+      - name: Install platform-specific dependencies
+        if: matrix.platform_deps != ''
+        run: |
+          pip install ${{ matrix.platform_deps }}
+      
+      # Install Linux-specific system dependencies
+      - name: Install Linux system dependencies
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
           sudo apt-get install -y libxcb-xinerama0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-xkb1 libxkbcommon-x11-0 libfontconfig1 libdbus-1-3
-          pip install PyQt6
+      
+      # Create images directory and icon in a cross-platform way
+      - name: Prepare app icon
+        run: |
+          python -c "
+import os
+import base64
 
-      - name: Install dependencies (non-Linux)
-        if: matrix.os != 'ubuntu-latest'
-        run: |
-          pip install PyQt6
+# Create images directory if it doesn't exist
+os.makedirs('images', exist_ok=True)
 
-      - name: Ensure icon directory exists
-        run: |
-          mkdir -p images
-      
-      - name: Create default icon if missing
-        run: |
-          if [ ! -f "images/app.ico" ]; then
-            echo "Creating placeholder icon"
-            python -c "
-          import base64
-          icon_data = 'AAABAAEAICAAAAEAIACoEAAAFgAAACgAAAAgAAAAQAAAAAEAIAAAAAAAABAAAMMOAADDDgAAAAAAAAAAAAD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AA=='
-          with open('images/app.ico', 'wb') as f:
-              f.write(base64.b64decode(icon_data))
+# Create a default icon if it doesn't exist
+icon_path = '${{ matrix.icon_path }}'.replace('\\\\', '\\')
+if not os.path.exists(icon_path):
+    print(f'Creating placeholder icon at {icon_path}')
+    # Minimal placeholder icon data
+    icon_data = 'AAABAAEAICAAAAEAIACoEAAAFgAAACgAAAAgAAAAQAAAAAEAIAAAAAAAABAAAMMOAADDDgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA='
+    with open(icon_path, 'wb') as f:
+        f.write(base64.b64decode(icon_data))
+    print('Placeholder icon created successfully')
+else:
+    print(f'Icon already exists at {icon_path}')
           "
-          fi
-        shell: bash
       
-      - name: Create Linux AppImage icon
-        if: matrix.os == 'ubuntu-latest'
+      # Windows-specific build
+      - name: Build Windows Executable
+        if: matrix.os == 'windows-latest'
         run: |
-          mkdir -p JokeNotifier.AppDir/usr/share/icons/hicolor/256x256/apps/
-          if [ -f "images/app.ico" ]; then
-            sudo apt-get install -y imagemagick
-            convert images/app.ico JokeNotifier.AppDir/usr/share/icons/hicolor/256x256/apps/JokeNotifier.png
-          else
-            # Create a simple placeholder icon
-            python -c "
-          from PIL import Image, ImageDraw
-          img = Image.new('RGB', (256, 256), color=(73, 109, 137))
-          d = ImageDraw.Draw(img)
-          d.ellipse((50, 50, 206, 206), fill=(255, 255, 255))
-          d.rectangle((70, 100, 186, 160), fill=(73, 109, 137))
-          img.save('JokeNotifier.AppDir/usr/share/icons/hicolor/256x256/apps/JokeNotifier.png')
-          "
-          fi
+          pyinstaller --name JokeNotifier --windowed --onefile --icon=${{ matrix.icon_path }} joke_notifier.py
       
-      - name: Build with PyInstaller (Windows/macOS)
-        if: matrix.os != 'ubuntu-latest'
+      # MacOS-specific build
+      - name: Build macOS App Bundle
+        if: matrix.os == 'macos-latest'
         run: |
-          pyinstaller --name JokeNotifier --windowed --onefile --icon=images/app.ico joke_notifier.py
+          pyinstaller --name JokeNotifier --windowed --onefile --icon=${{ matrix.icon_path }} joke_notifier.py
       
-      - name: Build with PyInstaller (Linux AppImage)
+      # Linux-specific build with AppImage
+      - name: Build Linux AppImage
         if: matrix.os == 'ubuntu-latest'
         run: |
           # First create a standard build
-          pyinstaller --name JokeNotifier --windowed --onefile joke_notifier.py
+          pyinstaller --name JokeNotifier --windowed --onefile --icon=${{ matrix.icon_path }} joke_notifier.py
           
-          # Prepare AppDir structure
+          # Create AppDir structure
           mkdir -p JokeNotifier.AppDir/usr/bin
           cp dist/JokeNotifier JokeNotifier.AppDir/usr/bin/
+          
+          # Prepare icon
+          mkdir -p JokeNotifier.AppDir/usr/share/icons/hicolor/256x256/apps/
+          
+          # Generate platform-specific icon for Linux
+          python - <<EOF
+from PIL import Image, ImageDraw
+import os
+
+# Create a simple icon for Linux
+img = Image.new('RGB', (256, 256), color=(73, 109, 137))
+d = ImageDraw.Draw(img)
+d.ellipse((50, 50, 206, 206), fill=(255, 255, 255))
+d.rectangle((70, 100, 186, 160), fill=(73, 109, 137))
+
+# Ensure the directory exists
+os.makedirs('JokeNotifier.AppDir/usr/share/icons/hicolor/256x256/apps/', exist_ok=True)
+img.save('JokeNotifier.AppDir/usr/share/icons/hicolor/256x256/apps/JokeNotifier.png')
+print('Linux app icon created successfully')
+EOF
           
           # Create desktop entry
           mkdir -p JokeNotifier.AppDir/usr/share/applications
           cat > JokeNotifier.AppDir/usr/share/applications/JokeNotifier.desktop << EOF
-          [Desktop Entry]
-          Type=Application
-          Name=Joke Notifier
-          Exec=JokeNotifier
-          Icon=JokeNotifier
-          Categories=Utility;
-          EOF
+[Desktop Entry]
+Type=Application
+Name=Joke Notifier
+Exec=JokeNotifier
+Icon=JokeNotifier
+Categories=Utility;
+EOF
           
           # Create AppRun script
           cat > JokeNotifier.AppDir/AppRun << EOF
-          #!/bin/bash
-          SELF=\$(readlink -f "\$0")
-          HERE=\${SELF%/*}
-          export PATH="\${HERE}/usr/bin:\${PATH}"
-          "\${HERE}/usr/bin/JokeNotifier" "\$@"
-          EOF
+#!/bin/bash
+SELF=\$(readlink -f "\$0")
+HERE=\${SELF%/*}
+export PATH="\${HERE}/usr/bin:\${PATH}"
+"\${HERE}/usr/bin/JokeNotifier" "\$@"
+EOF
           chmod +x JokeNotifier.AppDir/AppRun
           
           # Download and use appimagetool
@@ -128,6 +151,7 @@ jobs:
           chmod +x appimagetool-x86_64.AppImage
           ./appimagetool-x86_64.AppImage JokeNotifier.AppDir dist/JokeNotifier.AppImage
       
+      # Upload the build artifacts
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -135,6 +159,7 @@ jobs:
           path: ${{ matrix.artifact_path }}
           if-no-files-found: error
 
+  # Create GitHub release when pushing to main
   create-release:
     needs: build
     runs-on: ubuntu-latest
