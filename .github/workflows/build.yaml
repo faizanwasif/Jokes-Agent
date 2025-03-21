@@ -86,20 +86,20 @@ else:
       - name: Build Windows Executable
         if: matrix.os == 'windows-latest'
         run: |
-          pyinstaller --name JokeNotifier --windowed --onefile --icon=$\{{ matrix.icon_path }} joke_notifier.py
+          pyinstaller --name JokeNotifier --windowed --onefile --icon=${{ matrix.icon_path }} joke_notifier.py
       
       # MacOS-specific build
       - name: Build macOS App Bundle
         if: matrix.os == 'macos-latest'
         run: |
-          pyinstaller --name JokeNotifier --windowed --onefile --icon=$\{{ matrix.icon_path }} joke_notifier.py
+          pyinstaller --name JokeNotifier --windowed --onefile --icon=${{ matrix.icon_path }} joke_notifier.py
       
       # Linux-specific build with AppImage
       - name: Build Linux AppImage
         if: matrix.os == 'ubuntu-latest'
         run: |
           # First create a standard build
-          pyinstaller --name JokeNotifier --windowed --onefile --icon=$\{{ matrix.icon_path }} joke_notifier.py
+          pyinstaller --name JokeNotifier --windowed --onefile --icon=${{ matrix.icon_path }} joke_notifier.py
           
           # Create AppDir structure
           mkdir -p JokeNotifier.AppDir/usr/bin
