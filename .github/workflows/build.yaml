@@ -45,4 +45,4 @@ jobs:
         path: |
           dist/*.exe
           dist/*.app
-          dist/*.out  # For Linux builds, the output is usually a binary without an extension
+          dist/JokeNotifier  # For Linux builds (executable with no extension)
