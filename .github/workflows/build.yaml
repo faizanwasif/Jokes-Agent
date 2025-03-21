@@ -9,7 +9,7 @@ on:
 
 jobs:
   build:
-    runs-on: ${{ matrix.os }}
+    runs-on: $\{{ matrix.os }}
     strategy:
       fail-fast: false  # Continue with other builds even if one fails
       matrix:
@@ -37,7 +37,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.12.1'
+          python-version: '3.10'
           cache: 'pip'  # Enable pip caching for faster builds
       
       # Install base dependencies common to all platforms
@@ -48,13 +48,13 @@ jobs:
       
       # Install platform-specific dependencies
       - name: Install platform-specific dependencies
-        if: matrix.platform_deps != ''
+        if: $\{{ matrix.platform_deps != '' }}
         run: |
-          pip install --only-binary :all: ${{ matrix.platform_deps }}
+          pip install --only-binary :all: $\{{ matrix.platform_deps }}
       
       # Install Linux-specific system dependencies
       - name: Install Linux system dependencies
-        if: matrix.os == 'ubuntu-latest'
+        if: $\{{ matrix.os == 'ubuntu-latest' }}
         run: |
           sudo apt-get update
           sudo apt-get install -y libxcb-xinerama0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-xkb1 libxkbcommon-x11-0 libfontconfig1 libdbus-1-3
@@ -70,7 +70,7 @@ import base64
 os.makedirs('images', exist_ok=True)
 
 # Create a default icon if it doesn't exist
-icon_path = '${{ matrix.icon_path }}'.replace('\\\\', '\\')
+icon_path = '$\{{ matrix.icon_path }}'.replace('\\\\', '\\')
 if not os.path.exists(icon_path):
     print(f'Creating placeholder icon at {icon_path}')
     # Minimal placeholder icon data
@@ -86,20 +86,20 @@ else:
       - name: Build Windows Executable
         if: matrix.os == 'windows-latest'
         run: |
-          pyinstaller --name JokeNotifier --windowed --onefile --icon=${{ matrix.icon_path }} joke_notifier.py
+          pyinstaller --name JokeNotifier --windowed --onefile --icon=$\{{ matrix.icon_path }} joke_notifier.py
       
       # MacOS-specific build
       - name: Build macOS App Bundle
         if: matrix.os == 'macos-latest'
         run: |
-          pyinstaller --name JokeNotifier --windowed --onefile --icon=${{ matrix.icon_path }} joke_notifier.py
+          pyinstaller --name JokeNotifier --windowed --onefile --icon=$\{{ matrix.icon_path }} joke_notifier.py
       
       # Linux-specific build with AppImage
       - name: Build Linux AppImage
         if: matrix.os == 'ubuntu-latest'
         run: |
           # First create a standard build
-          pyinstaller --name JokeNotifier --windowed --onefile --icon=${{ matrix.icon_path }} joke_notifier.py
+          pyinstaller --name JokeNotifier --windowed --onefile --icon=$\{{ matrix.icon_path }} joke_notifier.py
           
           # Create AppDir structure
           mkdir -p JokeNotifier.AppDir/usr/bin
@@ -155,15 +155,15 @@ EOF
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: JokeNotifier-${{ matrix.os }}
-          path: ${{ matrix.artifact_path }}
+          name: JokeNotifier-$\{{ matrix.os }}
+          path: $\{{ matrix.artifact_path }}
           if-no-files-found: error
 
   # Create GitHub release when pushing to main
   create-release:
     needs: build
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: $\{{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     
     steps:
       - uses: actions/checkout@v3
@@ -180,15 +180,15 @@ EOF
         id: version
         run: |
           # Use date-based version number with build count
-          GITHUB_RUN_NUMBER="${{ github.run_number }}"
+          GITHUB_RUN_NUMBER="$\{{ github.run_number }}"
           VERSION_NUMBER=$(date +'%Y.%m.%d').$GITHUB_RUN_NUMBER
           echo "VERSION=$VERSION_NUMBER" >> $GITHUB_OUTPUT
       
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          name: Joke Notifier v${{ steps.version.outputs.VERSION }}
-          tag_name: v${{ steps.version.outputs.VERSION }}
+          name: Joke Notifier v$\{{ steps.version.outputs.VERSION }}
+          tag_name: v$\{{ steps.version.outputs.VERSION }}
           files: |
             artifacts/JokeNotifier-windows-latest/*.exe
             artifacts/JokeNotifier-macos-latest/*.app
@@ -196,4 +196,4 @@ EOF
           draft: false
           prerelease: false
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: $\{{ secrets.GITHUB_TOKEN }}
