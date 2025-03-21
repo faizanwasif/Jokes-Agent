@@ -10,27 +10,37 @@ from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
     QLabel, QPushButton, QFrame, QListWidget, QScrollArea, 
     QDialog, QRadioButton, QCheckBox, QSlider, QGroupBox, 
-    QMessageBox, QGridLayout, QTextEdit, QSplitter
+    QMessageBox, QGridLayout, QTextEdit, QSplitter, QSystemTrayIcon, QMenu
 )
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QObject, QSize
-from PyQt6.QtGui import QIcon, QColor, QPainter, QPixmap, QFont
+from PyQt6.QtGui import QIcon, QColor, QPainter, QPixmap, QFont, QPalette
 
 # Import notification libraries based on what's available
 try:
-    from plyer import notification
-    NOTIFICATION_SYSTEM = "plyer"
+    # For Windows 10+, use win10toast_click which has better Windows support
+    import win10toast_click
+    toaster = win10toast_click.ToastNotifier()
+    NOTIFICATION_SYSTEM = "win10toast_click"
 except ImportError:
     try:
+        # Fall back to standard win10toast
         import win10toast
         toaster = win10toast.ToastNotifier()
         NOTIFICATION_SYSTEM = "win10toast"
     except ImportError:
         try:
-            import notify2
-            notify2.init("Joke Notifier")
-            NOTIFICATION_SYSTEM = "notify2"
+            # Try plyer as the next option
+            from plyer import notification
+            NOTIFICATION_SYSTEM = "plyer"
         except ImportError:
-            NOTIFICATION_SYSTEM = "fallback"
+            try:
+                # Linux-specific option
+                import notify2
+                notify2.init("Joke Notifier")
+                NOTIFICATION_SYSTEM = "notify2"
+            except ImportError:
+                # Final fallback to Qt's own system
+                NOTIFICATION_SYSTEM = "qt"
 
 
 # Signal class to safely update UI from threads
@@ -92,6 +102,9 @@ class JokeNotifier(QMainWindow):
         
         # Load settings if they exist
         self.load_settings()
+        
+        # Setup system tray
+        self.setup_system_tray()
         
         # Start automatically if enabled
         if self.settings.get("autostart", False):
@@ -172,6 +185,80 @@ class JokeNotifier(QMainWindow):
         footer_label.setStyleSheet("color: gray; font-size: 8pt;")
         self.main_layout.addWidget(footer_label)
     
+    def setup_system_tray(self):
+        """Set up system tray icon and menu for better Windows integration"""
+        # Create system tray icon
+        self.tray_icon = QSystemTrayIcon(self)
+        
+        # Set icon - use application icon if available, otherwise use a default
+        if not self.windowIcon().isNull():
+            self.tray_icon.setIcon(self.windowIcon())
+        else:
+            self.tray_icon.setIcon(QIcon.fromTheme("dialog-information"))
+        
+        # Create tray menu
+        tray_menu = QMenu()
+        
+        # Add actions
+        show_action = tray_menu.addAction("Show Joke Notifier")
+        show_action.triggered.connect(self.show_and_activate)
+        
+        tray_menu.addSeparator()
+        
+        toggle_action = tray_menu.addAction("Start Notifications")
+        toggle_action.triggered.connect(self.toggle_notifications_from_tray)
+        self.tray_toggle_action = toggle_action  # Save reference to update text later
+        
+        test_action = tray_menu.addAction("Send Test Notification")
+        test_action.triggered.connect(self.send_test_notification)
+        
+        tray_menu.addSeparator()
+        
+        settings_action = tray_menu.addAction("Settings")
+        settings_action.triggered.connect(self.open_settings)
+        
+        tray_menu.addSeparator()
+        
+        exit_action = tray_menu.addAction("Exit")
+        exit_action.triggered.connect(self.close)
+        
+        # Set the menu
+        self.tray_icon.setContextMenu(tray_menu)
+        
+        # Handle activation (e.g., clicking the icon)
+        self.tray_icon.activated.connect(self.tray_icon_activated)
+        
+        # Show the tray icon
+        self.tray_icon.show()
+        
+        # Set tooltip
+        self.tray_icon.setToolTip("Joke Notifier")
+
+    def show_and_activate(self):
+        """Show and activate the window"""
+        self.show()
+        self.setWindowState(self.windowState() & ~Qt.WindowState.WindowMinimized | Qt.WindowState.WindowActive)
+        self.activateWindow()
+
+    def toggle_notifications_from_tray(self):
+        """Toggle notifications from the tray menu"""
+        self.toggle_notifications()
+        
+        # Update tray menu text
+        if self.is_running:
+            self.tray_toggle_action.setText("Stop Notifications")
+        else:
+            self.tray_toggle_action.setText("Start Notifications")
+
+    def tray_icon_activated(self, reason):
+        """Handle tray icon activation"""
+        if reason == QSystemTrayIcon.ActivationReason.Trigger:
+            # Single click - show/hide the window
+            if self.isVisible():
+                self.hide()
+            else:
+                self.show_and_activate()
+    
     def update_status_indicator(self, color):
         # Create a colored circle using a pixmap
         pixmap = QPixmap(20, 20)
@@ -193,6 +280,7 @@ class JokeNotifier(QMainWindow):
             self.start_notifications()
     
     def start_notifications(self):
+        # Original start_notifications code
         self.is_running = True
         self.status_label.setText("Running - Sending notifications")
         self.toggle_button.setText("Stop Notifications")
@@ -201,11 +289,16 @@ class JokeNotifier(QMainWindow):
         # Update status indicator
         self.update_status_indicator("green")
         
+        # Update tray menu if it exists
+        if hasattr(self, 'tray_toggle_action'):
+            self.tray_toggle_action.setText("Stop Notifications")
+        
         # Start the joke thread
         self.joke_thread = threading.Thread(target=self.joke_notification_loop, daemon=True)
         self.joke_thread.start()
     
     def stop_notifications(self):
+        # Original stop_notifications code
         self.is_running = False
         self.status_label.setText("Stopped")
         self.toggle_button.setText("Start Notifications")
@@ -214,6 +307,10 @@ class JokeNotifier(QMainWindow):
         
         # Update status indicator
         self.update_status_indicator("red")
+        
+        # Update tray menu if it exists
+        if hasattr(self, 'tray_toggle_action'):
+            self.tray_toggle_action.setText("Start Notifications")
     
     def joke_notification_loop(self):
         # Send first joke immediately
@@ -318,13 +415,16 @@ class JokeNotifier(QMainWindow):
             duration = self.settings.get("notification_duration", 10)
             
             # Use the appropriate notification system
-            if NOTIFICATION_SYSTEM == "plyer":
-                notification.notify(
-                    title=title,
-                    message=message,
-                    app_name="Joke Notifier",
-                    timeout=duration
+            if NOTIFICATION_SYSTEM == "win10toast_click":
+                # This has better Windows support
+                toaster.show_toast(
+                    title,
+                    message,
+                    icon_path=None,  # You can specify an icon path here
+                    duration=duration,
+                    threaded=True
                 )
+                return True
             elif NOTIFICATION_SYSTEM == "win10toast":
                 toaster.show_toast(
                     title,
@@ -332,17 +432,46 @@ class JokeNotifier(QMainWindow):
                     duration=duration,
                     threaded=True
                 )
+                return True
+            elif NOTIFICATION_SYSTEM == "plyer":
+                notification.notify(
+                    title=title,
+                    message=message,
+                    app_name="Joke Notifier",
+                    timeout=duration,
+                    app_icon=None  # You can specify an icon path here
+                )
+                return True
             elif NOTIFICATION_SYSTEM == "notify2":
                 n = notify2.Notification(title, message)
                 n.timeout = duration * 1000  # Convert to milliseconds
                 n.show()
-            else:
-                # Fallback to a simple messagebox if no notification system is available
-                QTimer.singleShot(0, lambda: QMessageBox.information(self, title, message))
-            
+                return True
+            elif NOTIFICATION_SYSTEM == "qt":
+                # Use Qt's own notification system via QSystemTrayIcon
+                if hasattr(self, 'tray_icon'):
+                    # Show the notification using Qt's system
+                    self.tray_icon.showMessage(
+                        title,
+                        message,
+                        QSystemTrayIcon.MessageIcon.Information,
+                        duration * 1000  # milliseconds
+                    )
+                    return True
+                
+            # Last resort fallback to a simple messagebox if no notification system is available
+            QTimer.singleShot(0, lambda: QMessageBox.information(self, title, message))
             return True
+                
         except Exception as e:
             self.signal_bridge.update_status.emit(f"Notification error: {str(e)}")
+            
+            # If all else fails, use Qt's message box as a last resort
+            try:
+                QTimer.singleShot(0, lambda: QMessageBox.information(self, title, message))
+            except:
+                pass
+                
             return False
     
     def send_test_notification(self):
@@ -489,15 +618,28 @@ class JokeNotifier(QMainWindow):
             self.status_label.setText(f"Error loading settings: {str(e)}")
     
     def closeEvent(self, event):
-        # Stop the notifications if running
-        if self.is_running:
-            self.stop_notifications()
-        
-        # Save settings
-        self.save_settings_to_file()
-        
-        # Accept the close event
-        event.accept()
+        if hasattr(self, 'tray_icon') and self.tray_icon.isVisible():
+            # Show a balloon message when minimizing to tray for the first time
+            QTimer.singleShot(500, lambda: self.tray_icon.showMessage(
+                "Joke Notifier",
+                "Joke Notifier is still running in the system tray. Right-click the icon for options.",
+                QSystemTrayIcon.MessageIcon.Information,
+                3000
+            ))
+            
+            # Hide the window instead of closing
+            self.hide()
+            event.ignore()
+        else:
+            # Stop the notifications if running
+            if self.is_running:
+                self.stop_notifications()
+            
+            # Save settings
+            self.save_settings_to_file()
+            
+            # Accept the close event
+            event.accept()
 
 
 class SettingsDialog(QDialog):
@@ -755,10 +897,114 @@ class SettingsDialog(QDialog):
         return settings
 
 
-def main():
-    app = QApplication(sys.argv)
-    app.setStyle('Fusion')  # Use Fusion style for a modern look
+def apply_dark_theme(app):
+    # Dark color palette
+    dark_palette = QPalette()
+    dark_palette.setColor(QPalette.ColorRole.Window, QColor(53, 53, 53))
+    dark_palette.setColor(QPalette.ColorRole.WindowText, Qt.GlobalColor.white)
+    dark_palette.setColor(QPalette.ColorRole.Base, QColor(35, 35, 35))
+    dark_palette.setColor(QPalette.ColorRole.AlternateBase, QColor(53, 53, 53))
+    dark_palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(25, 25, 25))
+    dark_palette.setColor(QPalette.ColorRole.ToolTipText, Qt.GlobalColor.white)
+    dark_palette.setColor(QPalette.ColorRole.Text, Qt.GlobalColor.white)
+    dark_palette.setColor(QPalette.ColorRole.Button, QColor(53, 53, 53))
+    dark_palette.setColor(QPalette.ColorRole.ButtonText, Qt.GlobalColor.white)
+    dark_palette.setColor(QPalette.ColorRole.Link, QColor(42, 130, 218))
+    dark_palette.setColor(QPalette.ColorRole.Highlight, QColor(42, 130, 218))
+    dark_palette.setColor(QPalette.ColorRole.HighlightedText, Qt.GlobalColor.black)
     
+    # Apply the palette
+    app.setPalette(dark_palette)
+    
+    # Set stylesheet for additional customizations
+    app.setStyleSheet("""
+        QGroupBox {
+            font-weight: bold;
+            border: 1px solid #555;
+            border-radius: 5px;
+            margin-top: 10px;
+            padding-top: 10px;
+        }
+        
+        QGroupBox::title {
+            subcontrol-origin: margin;
+            left: 10px;
+            padding: 0 5px;
+        }
+        
+        QPushButton {
+            padding: 6px 12px;
+            border-radius: 3px;
+            background-color: #444;
+            color: white;
+            border: 1px solid #555;
+        }
+        
+        QPushButton:hover {
+            background-color: #555;
+        }
+        
+        QPushButton:pressed {
+            background-color: #333;
+        }
+        
+        QLabel {
+            color: white;
+        }
+        
+        QListWidget {
+            background-color: #333;
+            color: white;
+            alternate-background-color: #3a3a3a;
+            border: 1px solid #555;
+        }
+        
+        QSlider::groove:horizontal {
+            height: 8px;
+            background: #444;
+            border-radius: 4px;
+        }
+        
+        QSlider::handle:horizontal {
+            background: #2a82da;
+            border: 1px solid #2a82da;
+            width: 18px;
+            margin: -6px 0;
+            border-radius: 9px;
+        }
+        
+        QSlider::add-page:horizontal {
+            background: #444;
+            border-radius: 4px;
+        }
+        
+        QSlider::sub-page:horizontal {
+            background: #2a82da;
+            border-radius: 4px;
+        }
+        
+        QCheckBox {
+            color: white;
+        }
+        
+        QRadioButton {
+            color: white;
+        }
+        
+        QScrollArea {
+            background-color: #333;
+            border: none;
+        }
+        
+        QTextEdit {
+            background-color: #333;
+            color: white;
+            border: 1px solid #555;
+        }
+    """)
+
+
+def apply_light_theme(app):
     # Set application-wide font
     app.setFont(QFont("Arial", 10))
     
@@ -816,6 +1062,33 @@ def main():
             border-radius: 4px;
         }
     """)
+
+
+def main():
+    app = QApplication(sys.argv)
+    app.setStyle('Fusion')  # Use Fusion style for a modern look
+    
+    # Detect system theme (you might need to customize this for your needs)
+    # This is a basic approach - a more sophisticated detection might be needed
+    is_dark_theme = False
+    
+    # Check if Windows is using dark theme
+    if sys.platform == 'win32':
+        try:
+            import winreg
+            registry = winreg.ConnectRegistry(None, winreg.HKEY_CURRENT_USER)
+            key = winreg.OpenKey(registry, r'Software\Microsoft\Windows\CurrentVersion\Themes\Personalize')
+            value, _ = winreg.QueryValueEx(key, 'AppsUseLightTheme')
+            is_dark_theme = value == 0
+        except:
+            # If we can't determine, assume light theme
+            pass
+    
+    # Apply appropriate theme
+    if is_dark_theme:
+        apply_dark_theme(app)
+    else:
+        apply_light_theme(app)
     
     window = JokeNotifier()
     window.show()

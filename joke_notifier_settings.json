@@ -1,0 +1,14 @@
+{
+    "frequency": 1,
+    "categories": [
+        "Misc",
+        "Dark",
+        "Spooky"
+    ],
+    "safe_mode": false,
+    "joke_type": "Any",
+    "language": "en",
+    "autostart": true,
+    "notification_duration": 10,
+    "max_history": 15
+}
